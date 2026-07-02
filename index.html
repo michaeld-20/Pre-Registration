@@ -7,7 +7,9 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         :root {
-            --primary: #4CAF50;
+            /* Your custom ELITES colors */
+            --primary: #0842A0; 
+            --hover: #1CA2D2;   
             --bg: #f4f7f6;
             --text: #333;
         }
@@ -21,15 +23,30 @@
             flex-direction: column;
             align-items: center;
         }
-        .container {
-            width: 100%;
-            max-width: 500px;
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+       .container {
+    width: 100%;
+    max-width: 500px;
+    background: white;
+    /* Explicitly defining each side: */
+    padding-top: 0px;
+    padding-right: 20px;
+    padding-bottom: 30px; /* Adjust this value for more/less space */
+    padding-left: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    text-align: center;
+}
+        
+        /* Styling for your header.png */
+        .header-img {
+            max-width: 100%; /* Adjust this if the image is too big/small */
+            height: auto;
+            margin: 0 auto 10px auto;
+            display: block;
         }
-        h2 { text-align: center; color: var(--primary); }
+
+        h2 { color: Black; margin-top: 0; font-size: 1.4em; }
+        
         #reader { width: 100%; margin-bottom: 20px; border-radius: 8px; overflow: hidden; }
         
         /* OVERRIDE QR LIBRARY DEFAULT BUTTONS */
@@ -43,13 +60,18 @@
             font-weight: bold !important;
             cursor: pointer !important;
             margin: 10px 5px !important;
-            transition: 0.2s !important;
+            transition: 0.3s !important; /* Smooth color transition */
             box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
         }
-        #reader button:hover { background-color: #3d8b40 !important; }
+        
+        /* The hover effect using your specific light blue */
+        #reader button:hover { 
+            background-color: var(--hover) !important; 
+        }
+        
         #reader a { color: var(--primary) !important; text-decoration: none !important; font-weight: bold !important; }
 
-        .user-card { display: none; margin-top: 20px; }
+        .user-card { display: none; margin-top: 20px; text-align: left; /* Keeps user data left-aligned */ }
         .data-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
         .data-label { font-weight: bold; color: #666; }
         
@@ -71,7 +93,8 @@
 <body>
 
 <div class="container">
-    <h2>QR Scanner</h2>
+    <img src="header.png" alt="ELITES Logo" class="header-img">
+    <h2>Pre Membership QR Scanner</h2>
     
     <div id="scanner-view">
         <div id="reader"></div>
@@ -79,7 +102,7 @@
     </div>
 
     <div id="user-card" class="user-card">
-        <h3 style="text-align:center; border-bottom: 2px solid #eee; padding-bottom:10px;">Attendee Info</h3>
+        <h3 style="text-align:center; border-bottom: 2px solid #eee; padding-bottom:10px; color: #0842A0;">Attendee Info</h3>
         
         <div class="data-row"><span class="data-label">Reg No:</span> <span id="val-reg"></span></div>
         <div class="data-row"><span class="data-label">Status:</span> <span id="val-status"></span></div>
