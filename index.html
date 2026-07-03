@@ -7,8 +7,8 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         :root {
-            var(--primary): #0842A0; 
-            var(--hover): #1CA2D2;   
+            --primary: #0842A0; 
+            --hover: #1CA2D2;   
             --bg: #f4f7f6;
             --text: #333;
         }
@@ -80,15 +80,44 @@
             font-size: 1em; font-weight: bold; cursor: pointer; color: white; transition: 0.2s;
         }
         
-        /* NEW BUTTON COLORS */
+        /* BUTTON COLORS */
         .btn-paid { background: #3498db; }
-        .btn-unpaid { background: #e74c3c; } /* Red for marking unpaid */
+        .btn-unpaid { background: #e74c3c; } 
         
         .btn-lanyard { background: #2F3C42; }
-        .btn-unclaimed { background: #e67e22; } /* Orange for unclaiming */
+        .btn-unclaimed { background: #e67e22; } 
         
         .btn-next { background: Black; width: 100%; margin-top: 10px; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* --- NEW POPUP STYLES --- */
+        .popup-overlay {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(2px);
+        }
+        .popup-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-width: 80%;
+        }
+        .popup-icon { font-size: 3rem; margin-bottom: 10px; }
+        .popup-content h3 { margin: 0 0 10px 0; color: var(--primary); font-size: 1.5em; }
+        .popup-content p { margin: 0; color: #555; font-size: 1em; }
+        
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -121,14 +150,22 @@
     </div>
 </div>
 
+<!-- --- NEW CUSTOM POPUP UI --- -->
+<div id="custom-popup" class="popup-overlay">
+    <div class="popup-content">
+        <div id="popup-icon" class="popup-icon">✅</div>
+        <h3 id="popup-title">Success!</h3>
+        <p id="popup-message">Data saved successfully.</p>
+    </div>
+</div>
+
 <script>
-    // 🔴 REPLACE THIS WITH YOUR GOOGLE WEB APP URL
+    // 🔴 YOUR GOOGLE WEB APP URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz6OfzYJ-QCGP_y-dXCJCryck9STqWYfK_1Vd6qEQJ00OfWM6HKydueW0MlsZRcpoCpyA/exec";
     
     let html5QrcodeScanner;
     let currentRegNum = "";
     
-    // NEW TRACKING VARIABLES
     let isProcessing = false; 
     let initialStatus = "";
     let currentStatus = "";
@@ -143,7 +180,6 @@
     }
 
     function onScanSuccess(decodedText, decodedResult) {
-        // CAMERA FIX: Ignore scans while the user card is open, but keep the camera "warm"
         if (isProcessing) return; 
         isProcessing = true; 
         
@@ -167,13 +203,12 @@
             const data = await response.json();
 
             if (data.success) {
-                // Record the status the exact moment they were scanned
                 initialStatus = data.status; 
                 currentStatus = data.status; 
                 populateCard(data);
             } else {
                 alert("Registration Number not found!");
-                resetScanner();
+                quickReset();
             }
         } catch (error) {
             alert("Connection error. Check console.");
@@ -188,12 +223,10 @@
         document.getElementById('val-program').innerText = data.programLevel;
         document.getElementById('val-ageSex').innerText = `${data.age} / ${data.sex}`;
         
-        // Status Text & Badge
         const statusSpan = document.getElementById('val-status');
         statusSpan.innerText = data.status;
         statusSpan.className = data.status === "Registered" ? "badge bg-green" : "badge bg-red";
         
-        // Dynamic Paid Button
         const btnPaid = document.getElementById('btn-paid');
         btnPaid.disabled = false;
         if (data.status === "Registered") {
@@ -206,12 +239,10 @@
             btnPaid.onclick = () => updateAction('toggleStatus', btnPaid);
         }
 
-        // Merch Text & Badge
         const merchSpan = document.getElementById('val-merch');
         merchSpan.innerText = data.merch;
         merchSpan.className = data.merch === "Claimed" ? "badge bg-red" : "badge bg-green";
         
-        // Dynamic Lanyard Button
         const btnLanyard = document.getElementById('btn-lanyard');
         btnLanyard.disabled = false;
         if (data.merch === "Claimed") {
@@ -237,9 +268,8 @@
             const data = await response.json();
             
             if (data.success) {
-                // If it was a status change, update our current tracker
                 if (actionType === 'toggleStatus') { currentStatus = data.newStatus; }
-                fetchUserData(currentRegNum); // Refresh UI
+                fetchUserData(currentRegNum); 
             }
         } catch (error) {
             alert("Failed to update.");
@@ -247,22 +277,53 @@
         }
     }
 
+    // --- NEW SMOOTH RESET FUNCTION ---
     function resetScanner() {
-        // EMAIL TRIGGER: If the status changed while we were looking at them, send the email!
-        if (initialStatus !== currentStatus) {
+        const hasStatusChanged = (initialStatus !== currentStatus);
+        
+        // 1. Trigger the background email if needed
+        if (hasStatusChanged) {
             fetch(SCRIPT_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "sendEmail", regNum: currentRegNum })
             }).catch(e => console.error("Email failed to send"));
         }
         
+        // 2. Setup the Pop-up Content
+        const popup = document.getElementById('custom-popup');
+        const icon = document.getElementById('popup-icon');
+        const title = document.getElementById('popup-title');
+        const message = document.getElementById('popup-message');
+
+        if (hasStatusChanged) {
+            icon.innerText = "✅";
+            title.innerText = "Changes Saved!";
+            message.innerText = "Status updated & email triggered.";
+        } else {
+            icon.innerText = "📷";
+            title.innerText = "Ready!";
+            message.innerText = "Scanning next attendee...";
+        }
+
+        // 3. Show the Pop-up
+        popup.style.display = 'flex';
+
+        // 4. Hide the pop-up after 1.2 seconds, then reset UI
+        setTimeout(() => {
+            popup.style.display = 'none';
+            document.getElementById('user-card').style.display = 'none';
+            document.getElementById('scanner-view').style.display = 'block';
+            
+            // Re-enable camera scanning shortly after UI switches
+            setTimeout(() => { isProcessing = false; }, 500); 
+        }, 1200); 
+    }
+
+    // Backup reset for errors
+    function quickReset() {
         document.getElementById('user-card').style.display = 'none';
         document.getElementById('scanner-view').style.display = 'block';
-        
-        // Give the camera 1.5 seconds cooldown before accepting new scans
-        setTimeout(() => {
-            isProcessing = false;
-        }, 1500); 
+        isProcessing = false;
     }
 
     function playBeep() {
