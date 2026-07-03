@@ -7,9 +7,8 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         :root {
-            /* Your custom ELITES colors */
-            --primary: #0842A0; 
-            --hover: #1CA2D2;   
+            var(--primary): #0842A0; 
+            var(--hover): #1CA2D2;   
             --bg: #f4f7f6;
             --text: #333;
         }
@@ -27,7 +26,6 @@
             width: 100%;
             max-width: 500px;
             background: white;
-            /* Explicitly defining each side: */
             padding-top: 0px;
             padding-right: 20px;
             padding-bottom: 30px; 
@@ -37,28 +35,23 @@
             text-align: center;
         }
         
-        /* Styling for your header.png */
         .header-img {
             max-width: 100%; 
             height: auto;
             margin: 0 auto 10px auto;
             display: block;
-            
-            /* THE MAGIC ANTI-DOWNLOAD LINES */
-            pointer-events: none;       /* Blocks clicks and right-clicks */
-            user-select: none;          /* Prevents highlighting */
-            -webkit-user-select: none;  /* Safari support */
-            -webkit-user-drag: none;    /* Prevents dragging the image */
-            -webkit-touch-callout: none;/* Disables the long-press popup on phones */
+            pointer-events: none;       
+            user-select: none;          
+            -webkit-user-select: none;  
+            -webkit-user-drag: none;    
+            -webkit-touch-callout: none;
         }
 
         h2 { color: Black; margin-top: 0; font-size: 1.4em; }
-        
         #reader { width: 100%; margin-bottom: 20px; border-radius: 8px; overflow: hidden; }
         
-        /* OVERRIDE QR LIBRARY DEFAULT BUTTONS */
         #reader button {
-            background-color: var(--primary) !important;
+            background-color: #0842A0 !important;
             color: white !important;
             border: none !important;
             padding: 10px 15px !important;
@@ -70,12 +63,8 @@
             transition: 0.3s !important; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
         }
-        
-        #reader button:hover { 
-            background-color: var(--hover) !important; 
-        }
-        
-        #reader a { color: var(--primary) !important; text-decoration: none !important; font-weight: bold !important; }
+        #reader button:hover { background-color: #1CA2D2 !important; }
+        #reader a { color: #0842A0 !important; text-decoration: none !important; font-weight: bold !important; }
 
         .user-card { display: none; margin-top: 20px; text-align: left; }
         .data-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
@@ -90,8 +79,14 @@
             flex: 1; min-width: 120px; padding: 12px; border: none; border-radius: 6px;
             font-size: 1em; font-weight: bold; cursor: pointer; color: white; transition: 0.2s;
         }
+        
+        /* NEW BUTTON COLORS */
         .btn-paid { background: #3498db; }
-        .btn-lanyard { background: #2F3C42; }
+        .btn-unpaid { background: #e74c3c; } /* Red for marking unpaid */
+        
+        .btn-lanyard { background: #9b59b6; }
+        .btn-unclaimed { background: #e67e22; } /* Orange for unclaiming */
+        
         .btn-next { background: Black; width: 100%; margin-top: 10px; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
@@ -119,8 +114,8 @@
         <div class="data-row"><span class="data-label">Discount:</span> <span id="val-merch"></span></div>
 
         <div class="btn-group">
-            <button class="btn-paid" id="btn-paid" onclick="updateAction('markPaid', this)">Mark Paid</button>
-            <button class="btn-lanyard" id="btn-lanyard" onclick="updateAction('claimMerch', this)">Claim Discount</button>
+            <button class="btn-paid" id="btn-paid">Loading...</button>
+            <button class="btn-lanyard" id="btn-lanyard">Loading...</button>
         </div>
         <button class="btn-next" onclick="resetScanner()">Scan Next</button>
     </div>
@@ -132,36 +127,33 @@
     
     let html5QrcodeScanner;
     let currentRegNum = "";
+    
+    // NEW TRACKING VARIABLES
+    let isProcessing = false; 
+    let initialStatus = "";
+    let currentStatus = "";
 
-    // Initialize Scanner
     function startScanner() {
-        // 1. Detect if the user is on a mobile phone
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        let config = { 
-            fps: 10, 
-            qrbox: {width: 250, height: 250} 
-        };
-
-        // 2. If on mobile, force the rear camera. If on desktop, leave it blank to allow camera selection.
-        if (isMobile) {
-            config.videoConstraints = { facingMode: "environment" };
-        }
+        let config = { fps: 10, qrbox: {width: 250, height: 250} };
+        if (isMobile) { config.videoConstraints = { facingMode: "environment" }; }
 
         html5QrcodeScanner = new Html5QrcodeScanner("reader", config, false);
         html5QrcodeScanner.render(onScanSuccess, onScanFailure);
     }
 
     function onScanSuccess(decodedText, decodedResult) {
-        html5QrcodeScanner.clear(); // Stop scanning immediately
-        playBeep(); // Audio feedback
+        // CAMERA FIX: Ignore scans while the user card is open, but keep the camera "warm"
+        if (isProcessing) return; 
+        isProcessing = true; 
+        
+        playBeep(); 
         currentRegNum = decodedText;
         fetchUserData(decodedText);
     }
 
     function onScanFailure(error) { /* Ignore background scanning errors */ }
 
-    // Fetch Data from Google Sheets
     async function fetchUserData(regNum) {
         document.getElementById('scanner-view').style.display = 'none';
         document.getElementById('user-card').style.display = 'block';
@@ -175,6 +167,9 @@
             const data = await response.json();
 
             if (data.success) {
+                // Record the status the exact moment they were scanned
+                initialStatus = data.status; 
+                currentStatus = data.status; 
                 populateCard(data);
             } else {
                 alert("Registration Number not found!");
@@ -186,7 +181,6 @@
         }
     }
 
-    // Update UI with fetched data
     function populateCard(data) {
         document.getElementById('val-reg').innerText = data.regNumber;
         document.getElementById('val-name').innerText = data.name;
@@ -194,22 +188,45 @@
         document.getElementById('val-program').innerText = data.programLevel;
         document.getElementById('val-ageSex').innerText = `${data.age} / ${data.sex}`;
         
-        // Status Formatting
+        // Status Text & Badge
         const statusSpan = document.getElementById('val-status');
         statusSpan.innerText = data.status;
         statusSpan.className = data.status === "Registered" ? "badge bg-green" : "badge bg-red";
-        document.getElementById('btn-paid').disabled = (data.status === "Registered");
+        
+        // Dynamic Paid Button
+        const btnPaid = document.getElementById('btn-paid');
+        btnPaid.disabled = false;
+        if (data.status === "Registered") {
+            btnPaid.innerText = "Mark Unpaid";
+            btnPaid.className = "btn-unpaid";
+            btnPaid.onclick = () => updateAction('toggleStatus', btnPaid);
+        } else {
+            btnPaid.innerText = "Mark Paid";
+            btnPaid.className = "btn-paid";
+            btnPaid.onclick = () => updateAction('toggleStatus', btnPaid);
+        }
 
-        // Merch Formatting
+        // Merch Text & Badge
         const merchSpan = document.getElementById('val-merch');
         merchSpan.innerText = data.merch;
-        merchSpan.className = data.merch === "Available" ? "badge bg-green" : "badge bg-red";
-        document.getElementById('btn-lanyard').disabled = (data.merch !== "Available");
+        merchSpan.className = data.merch === "Claimed" ? "badge bg-red" : "badge bg-green";
+        
+        // Dynamic Lanyard Button
+        const btnLanyard = document.getElementById('btn-lanyard');
+        btnLanyard.disabled = false;
+        if (data.merch === "Claimed") {
+            btnLanyard.innerText = "Undo Claim";
+            btnLanyard.className = "btn-unclaimed";
+            btnLanyard.onclick = () => updateAction('toggleMerch', btnLanyard);
+        } else {
+            btnLanyard.innerText = "Claim Lanyard";
+            btnLanyard.className = "btn-lanyard";
+            btnLanyard.onclick = () => updateAction('toggleMerch', btnLanyard);
+        }
     }
 
-    // Send Update to Google Sheets (Paid or Merch)
     async function updateAction(actionType, btnElement) {
-        btnElement.innerText = "Processing...";
+        btnElement.innerText = "Wait...";
         btnElement.disabled = true;
 
         try {
@@ -220,38 +237,43 @@
             const data = await response.json();
             
             if (data.success) {
-                btnElement.innerText = "Done!";
-                // Refresh data to show new statuses
-                fetchUserData(currentRegNum); 
+                // If it was a status change, update our current tracker
+                if (actionType === 'toggleStatus') { currentStatus = data.newStatus; }
+                fetchUserData(currentRegNum); // Refresh UI
             }
         } catch (error) {
             alert("Failed to update.");
-            btnElement.innerText = "Try Again";
             btnElement.disabled = false;
         }
     }
 
     function resetScanner() {
+        // EMAIL TRIGGER: If the status changed while we were looking at them, send the email!
+        if (initialStatus !== currentStatus) {
+            fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "sendEmail", regNum: currentRegNum })
+            }).catch(e => console.error("Email failed to send"));
+        }
+        
         document.getElementById('user-card').style.display = 'none';
         document.getElementById('scanner-view').style.display = 'block';
         
-        // Reset Buttons
-        document.getElementById('btn-paid').innerText = "Mark Paid";
-        document.getElementById('btn-lanyard').innerText = "Claim Lanyard";
-        
-        startScanner();
+        // Give the camera 1.5 seconds cooldown before accepting new scans
+        setTimeout(() => {
+            isProcessing = false;
+        }, 1500); 
     }
 
     function playBeep() {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         osc.connect(ctx.destination);
-        osc.frequency.value = 800; // Hz
+        osc.frequency.value = 800; 
         osc.start();
         osc.stop(ctx.currentTime + 0.1);
     }
 
-    // Start on page load
     window.onload = startScanner;
 </script>
 </body>
