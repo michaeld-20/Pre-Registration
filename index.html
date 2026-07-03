@@ -84,7 +84,7 @@
         .btn-paid { background: #3498db; }
         .btn-unpaid { background: #e74c3c; } /* Red for marking unpaid */
         
-        .btn-lanyard { background: #9b59b6; }
+        .btn-lanyard { background: #2F3C42; }
         .btn-unclaimed { background: #e67e22; } /* Orange for unclaiming */
         
         .btn-next { background: Black; width: 100%; margin-top: 10px; }
@@ -219,7 +219,7 @@
             btnLanyard.className = "btn-unclaimed";
             btnLanyard.onclick = () => updateAction('toggleMerch', btnLanyard);
         } else {
-            btnLanyard.innerText = "Claim Lanyard";
+            btnLanyard.innerText = "Claim Discount";
             btnLanyard.className = "btn-lanyard";
             btnLanyard.onclick = () => updateAction('toggleMerch', btnLanyard);
         }
