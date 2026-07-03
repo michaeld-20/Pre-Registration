@@ -30,7 +30,7 @@
             /* Explicitly defining each side: */
             padding-top: 0px;
             padding-right: 20px;
-            padding-bottom: 30px; /* Adjust this value for more/less space */
+            padding-bottom: 30px; 
             padding-left: 20px;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -39,10 +39,17 @@
         
         /* Styling for your header.png */
         .header-img {
-            max-width: 100%; /* Adjust this if the image is too big/small */
+            max-width: 100%; 
             height: auto;
             margin: 0 auto 10px auto;
             display: block;
+            
+            /* THE MAGIC ANTI-DOWNLOAD LINES */
+            pointer-events: none;       /* Blocks clicks and right-clicks */
+            user-select: none;          /* Prevents highlighting */
+            -webkit-user-select: none;  /* Safari support */
+            -webkit-user-drag: none;    /* Prevents dragging the image */
+            -webkit-touch-callout: none;/* Disables the long-press popup on phones */
         }
 
         h2 { color: Black; margin-top: 0; font-size: 1.4em; }
@@ -60,18 +67,17 @@
             font-weight: bold !important;
             cursor: pointer !important;
             margin: 10px 5px !important;
-            transition: 0.3s !important; /* Smooth color transition */
+            transition: 0.3s !important; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
         }
         
-        /* The hover effect using your specific light blue */
         #reader button:hover { 
             background-color: var(--hover) !important; 
         }
         
         #reader a { color: var(--primary) !important; text-decoration: none !important; font-weight: bold !important; }
 
-        .user-card { display: none; margin-top: 20px; text-align: left; /* Keeps user data left-aligned */ }
+        .user-card { display: none; margin-top: 20px; text-align: left; }
         .data-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
         .data-label { font-weight: bold; color: #666; }
         
@@ -93,7 +99,7 @@
 <body>
 
 <div class="container">
-    <img src="header.png" alt="ELITES Logo" class="header-img">
+    <img src="header.png" alt="ELITES Logo" class="header-img" draggable="false">
     <h2>ELITES QR Scanner</h2>
     
     <div id="scanner-view">
@@ -129,7 +135,20 @@
 
     // Initialize Scanner
     function startScanner() {
-        html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+        // 1. Detect if the user is on a mobile phone
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        let config = { 
+            fps: 10, 
+            qrbox: {width: 250, height: 250} 
+        };
+
+        // 2. If on mobile, force the rear camera. If on desktop, leave it blank to allow camera selection.
+        if (isMobile) {
+            config.videoConstraints = { facingMode: "environment" };
+        }
+
+        html5QrcodeScanner = new Html5QrcodeScanner("reader", config, false);
         html5QrcodeScanner.render(onScanSuccess, onScanFailure);
     }
 
