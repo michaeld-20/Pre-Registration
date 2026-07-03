@@ -90,7 +90,7 @@
         .btn-next { background: Black; width: 100%; margin-top: 10px; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* --- NEW POPUP STYLES --- */
+        /* --- POPUP STYLES --- */
         .popup-overlay {
             display: none; /* Hidden by default */
             position: fixed;
@@ -150,7 +150,6 @@
     </div>
 </div>
 
-<!-- --- NEW CUSTOM POPUP UI --- -->
 <div id="custom-popup" class="popup-overlay">
     <div class="popup-content">
         <div id="popup-icon" class="popup-icon">✅</div>
@@ -223,13 +222,20 @@
         document.getElementById('val-program').innerText = data.programLevel;
         document.getElementById('val-ageSex').innerText = `${data.age} / ${data.sex}`;
         
+        // Render buttons instantly
+        renderStatus(data.status);
+        renderMerch(data.merch);
+    }
+
+    // --- UI HELPER FUNCTIONS ---
+    function renderStatus(status) {
         const statusSpan = document.getElementById('val-status');
-        statusSpan.innerText = data.status;
-        statusSpan.className = data.status === "Registered" ? "badge bg-green" : "badge bg-red";
+        statusSpan.innerText = status;
+        statusSpan.className = status === "Registered" ? "badge bg-green" : "badge bg-red";
         
         const btnPaid = document.getElementById('btn-paid');
         btnPaid.disabled = false;
-        if (data.status === "Registered") {
+        if (status === "Registered") {
             btnPaid.innerText = "Mark Unpaid";
             btnPaid.className = "btn-unpaid";
             btnPaid.onclick = () => updateAction('toggleStatus', btnPaid);
@@ -238,14 +244,16 @@
             btnPaid.className = "btn-paid";
             btnPaid.onclick = () => updateAction('toggleStatus', btnPaid);
         }
+    }
 
+    function renderMerch(merch) {
         const merchSpan = document.getElementById('val-merch');
-        merchSpan.innerText = data.merch;
-        merchSpan.className = data.merch === "Claimed" ? "badge bg-red" : "badge bg-green";
+        merchSpan.innerText = merch;
+        merchSpan.className = merch === "Claimed" ? "badge bg-red" : "badge bg-green";
         
         const btnLanyard = document.getElementById('btn-lanyard');
         btnLanyard.disabled = false;
-        if (data.merch === "Claimed") {
+        if (merch === "Claimed") {
             btnLanyard.innerText = "Undo Claim";
             btnLanyard.className = "btn-unclaimed";
             btnLanyard.onclick = () => updateAction('toggleMerch', btnLanyard);
@@ -257,6 +265,7 @@
     }
 
     async function updateAction(actionType, btnElement) {
+        const originalText = btnElement.innerText;
         btnElement.innerText = "Wait...";
         btnElement.disabled = true;
 
@@ -268,16 +277,26 @@
             const data = await response.json();
             
             if (data.success) {
-                if (actionType === 'toggleStatus') { currentStatus = data.newStatus; }
-                fetchUserData(currentRegNum); 
+                // Instantly update UI without re-fetching from Google!
+                if (actionType === 'toggleStatus') { 
+                    currentStatus = data.newStatus; // Update tracker for the email
+                    renderStatus(data.newStatus); 
+                } else if (actionType === 'toggleMerch') {
+                    renderMerch(data.newMerch);
+                }
+            } else {
+                alert("Failed to update.");
+                btnElement.disabled = false;
+                btnElement.innerText = originalText;
             }
         } catch (error) {
-            alert("Failed to update.");
+            alert("Connection error.");
             btnElement.disabled = false;
+            btnElement.innerText = originalText;
         }
     }
 
-    // --- NEW SMOOTH RESET FUNCTION ---
+    // --- SMOOTH RESET FUNCTION ---
     function resetScanner() {
         const hasStatusChanged = (initialStatus !== currentStatus);
         
